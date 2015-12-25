@@ -22,7 +22,7 @@ SimulatePortfolio = function(assetData, portfolioWeights, initialWealth=10000,
     portfolio = portfolioWeights * wealth
     for (j in 1:n.days) {
       day_return = resample(assetData, 1)[1,]
-      portfolio = portfolio * (1 + day_return)
+      portfolio = portfolio * (1+day_return)
       wealth = sum(portfolio)
       if (dailyRebalance == TRUE) {
         portfolio = portfolioWeights * wealth

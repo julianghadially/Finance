@@ -20,7 +20,6 @@ Crucial to this is to determine optimal weights for each asset in my portfolio. 
 
 
 ```{r, echo = FALSE, include = FALSE}
-#setwd('Documents/Personal Finance/Vanguard Portfolio')
 library(ggplot2)
 source('Data/MyPortfolioFunctions.R')
 library(fImport)
@@ -29,31 +28,53 @@ library(sqldf)
 ```
   
 ###Introduction  
-An investment strategy based on index funds has the advantage of low cost expense ratios, diversification, protection against human error, and passive management for the investor. As a result, professional money managers and actively managed funds that try to outperform the market have performed worse on average than index funds that try to track the market.  
-In my investments, I have struggled to provide myself with concrete evidence to justify a given allocation between varying index funds. The purpose of this analysis is to determine these weights. Given that each index fund is completely diversified within its own market (ie. they have removed all unique risk within that market), It could potentially be overkill to try to diversify further between markets. This analysis should help determine whether that's the case.
+An investment strategy based on index funds has the advantage of low cost expense ratios, diversification, protection against human error, and passive management for the investor. Furthermore, professional money managers and actively managed funds that try to outperform the market have performed worse on average than index funds that try to track the market.  
+In my investments, I have struggled to provide myself with concrete evidence to justify a given allocation between varying index funds. The purpose of this analysis is to determine these weights. Given that each index fund is essentially completely diversified within its own market (ie. they have removed almost all unique risk of securities within that market), It could potentially be overkill to try to diversify further between markets. This analysis should help determine whether that's the case.
   
 **Assets**  
 There are four funds under consideration:  
 1. Vanguard Total Stock Market Index Fund (VTSMX)  
 2. Vanguard Total Bond Market Index Fund  (VBMFX)  
-3. Vanguard Small-Cap Index Fund  
-4. Vanguard Emerging Markets Stock Index  
+3. Vanguard Small-Cap Index Fund (NAESX)
+4. Vanguard Emerging Markets Stock Index (VEIEX)
 
-Data for these funds are obtained from Yahoo Finance for the last decade, from January 2005 to December 2015. Each year has 260 trading days.
+Data for these funds are obtained from Yahoo Finance for the last decade, from November 30, 2005 to November 30, 2015. Each year has 260 trading days.
 
 ###Exploratory Analysis
-**Volatility: Beta's and Correlation Matrix**
+**Individual Fund Risk and Returns** 
 
-Beta's (see below) are acquired using SPY as a proxy for the market portfolio. The assumption is that the market portfolio is an efficient portfolio. SPY is commonly used, but it seems plausible that a global market index may be better to use.
-
-```{r, echo=FALSE, cache = TRUE, cache.path = 'cache/'}
+```{r, echo=FALSE}
 set.seed(1)
 funds = c('SPY','VTSMX', 'VBMFX', 'NAESX', 'VEIEX') 
-prices = yahooSeries(funds, from = '2005-01-01', to = '2015-12-20')
+prices = yahooSeries(funds, from = '2005-11-30', to = '2015-11-30')
 returns = YahooPricesToReturns(prices)
 #risk free rate. 1-year US treasury bond has a rate of .66% on 12-22-15
 risk_free_rate = .024
 ```
+
+```{r, echo = FALSE}
+VTSMX.mean = (1+(prices[length(prices[,12]),12][1] - prices[1,12][1]) / prices[1,12][1])**(1/10) - 1
+VBMFX.mean = (1+(prices[length(prices[,18]),18][1] - prices[1,18][1]) / prices[1,18][1])**(1/10) - 1
+NAESX.mean = (1+(prices[length(prices[,24]),24][1] - prices[1,24][1]) / prices[1,24][1])**(1/10) - 1
+VEIEX.mean = (1+(prices[length(prices[,30]),30][1] - prices[1,30][1]) / prices[1,30][1])**(1/10) - 1
+```
+```{r, echo = FALSE, include = FALSE}
+print(paste('the Expected effective annual return of each fund, in order, is' , VTSMX.mean, VBMFX.mean, NAESX.mean, VEIEX.mean))
+apply(returns, 2, sd)*sqrt(260)
+```
+
+Fund  | Return | Risk (annual standard deviation of daily returns)
+----- | ------ | -------------------------
+VTSMX | 7.63%  | 20.73%
+VBMFX | 4.51%  | 4.07%
+NAESX | 8.27%  | 24.65%
+VEIEX | 4.12%  | 25.31%
+
+These calculations also match the quoted 10-year annual effective returns listed on Vanguard.com, as of their November 30, 2015 update.
+
+**Volatility: Beta's and Correlation Matrix**
+
+Beta's (see below) are acquired using SPY as a proxy for the market portfolio. The assumption is that the market portfolio is an efficient portfolio.
 
 ```{r, echo=FALSE}
 
@@ -69,99 +90,99 @@ VEIEX.beta = VEIEX.lm$coefficients[2]
 
 data.frame('VTSMX' = VTSMX.beta, 'VBMFX' = VBMFX.beta, 'NAESX' = NAESX.beta, 'VEIEX' = VEIEX.beta, row.names = 'Betas')
 ```
-The bond market index fund is the least exposed to the systematic risk of the US stock market, as expected, with a beta of -0.06. 
+The bond market index fund is the least exposed to the systematic risk of the US stock market, as expected, with a beta of -0.066. 
 
 Correlation Matrix
 ```{r, echo = FALSE}
 cor(returns[,2:5])
 ```
-In order to receive the benefits of diversification, it is crucial to use uncorrelated inputs. Thus, I use the correlation matrix from above to gauge how these different securities interact in a portfolio. From the correlation matrix above, we see that the bond market is the least correlated with the total stock market, with a correlation of -0.329. However, the small stock index has a very high correlation of .96 with the total stock index. Given that the current portfolio is weighted heavily in the VTSMX, the small stock index is not providing very much diversification benefits. Its purpose would be to make a bet on small cap firms, which tend to have slightly larger returns over time than large cap firms.
+  
+In order to receive the benefits of diversification, it is crucial to use uncorrelated inputs. Thus, I use the correlation matrix from above to gauge how these different securities interact in a portfolio. From the correlation matrix above, we see that the bond market is the least correlated with the total stock market, with a correlation of -0.346. However, the small stock index has a very high correlation of 0.96 with the total stock index. Given that the current portfolio is weighted heavily in the VTSMX, the small stock index is not providing very much diversification benefits. Its purpose would be to make a bet on small cap firms, which tend to have slightly larger returns over time than large cap firms.
 
-Theoretically, the only thing that matters when adding an asset to a diversified portfolio is how it covaries with the portfolio. (This is derived from Markowitz's variance of a portfolio equation combined with the theory behind the capital allocation line). For a portfolio that reflects the market, what matters is its covariance with the market. The beta for stock x is related to covariance with the market in that the beta (like the coefficient for any other regression) is equal to covariance(stock x, market)/Var(market). 
+Theoretically, the only thing that matters when adding an asset to a diversified portfolio is how it covaries with the portfolio. (This concept is derived from Markowitz's variance of a portfolio equation combined with the theory behind the capital allocation line). For a portfolio that reflects the market, what matters when adding an asset is its covariance with the market. The beta for stock x is related to covariance with the market in that the beta (like the coefficient for any other regression) is equal to covariance(stock x, market)/Var(market). 
 
+###Risk-Return Analysis of Portfolios
+
+```{r, eval = FALSE, include = FALSE}
 ###Risk-Return Analysis of portfolios using Monte Carlo Simulations
 
 Here, I bootstrap returns over 20-day periods from our training sample of historic fund prices (monte-carlo simulation). This is performed using 2000 bootstrap samples for several portfolio allocations. Returns and standard deviations are then converted to effective annual rates. Note that there are 260 trading days in a year.
-
+```
 Portfolio 1: Current Portfolio
 VTSMX: 52.02%, VBMX: 30.03%, NAESX: 17.95%, VEIEX: 0%
 
-```{r, echo = FALSE}
+```{r, echo = FALSE, include = FALSE, eval = FALSE}
 set.seed(1)
 expected_returns = NULL
 sdevs = NULL
 current.portfolio.weights = c(0,.5202,.3003,.1795,0)
-finalwealth = SimulatePortfolio(returns, current.portfolio.weights, initialWealth = 10000, nboot = 2000, dailyRebalance = TRUE, n.days = 20)
+finalwealth = SimulatePortfolio(returns, current.portfolio.weights, initialWealth = 10000, nboot = 5000, dailyRebalance = TRUE, n.days = 1)
 portfolioMetrics(finalwealth)
-expected_returns = c(expected_returns, portfolioMetrics.ExpectedReturn(finalwealth))
-sdevs = c(sdevs, portfolioMetrics.sd(finalwealth))
+expected_returns = c(expected_returns, portfolioMetrics.ExpectedReturn(finalwealth, ndays = 1))
+sdevs = c(sdevs, portfolioMetrics.sd(finalwealth, ndays = 1))
 ```
 
-Portfolio 2: Stock Heavy
+Portfolio 2: Stock Heavy With Emerging Markets
 VTSMX: 50%, VBMX: 10%, NAESX: 20%, VEIEX: 20%
-```{r, echo = FALSE}
+```{r, echo = FALSE, include = FALSE, eval = FALSE}
 set.seed(1)
 portfolio2.weights = c(0,.5,.1,.2,.2)
-finalwealth = SimulatePortfolio(returns, portfolio2.weights, initialWealth = 10000, nboot = 2000, dailyRebalance = TRUE, n.days = 20)
+finalwealth = SimulatePortfolio(returns, portfolio2.weights, initialWealth = 10000, nboot = 5000, dailyRebalance = TRUE, n.days = 1)
 #portfolioMetrics(finalwealth)
-expected_returns = c(expected_returns, portfolioMetrics.ExpectedReturn(finalwealth))
-sdevs = c(sdevs, portfolioMetrics.sd(finalwealth))
+expected_returns = c(expected_returns, portfolioMetrics.ExpectedReturn(finalwealth, ndays = 1))
+sdevs = c(sdevs, portfolioMetrics.sd(finalwealth, ndays = 1))
 ```
 
 Portfolio 3: Even-Split
 VTSMX: 25%, VBMX: 25%, NAESX: 25%, VEIEX: 25%
-```{r, echo = FALSE}
+```{r, echo = FALSE, include = FALSE, eval = FALSE}
 set.seed(1)
 portfolio3.weights = c(0,.25,.25,.25,.25)
-finalwealth = SimulatePortfolio(returns, portfolio3.weights, initialWealth = 10000, nboot = 2000, dailyRebalance = TRUE, n.days = 20)
+finalwealth = SimulatePortfolio(returns, portfolio3.weights, initialWealth = 10000, nboot = 5000, dailyRebalance = TRUE, n.days = 1)
 #portfolioMetrics(finalwealth)
-expected_returns = c(expected_returns, portfolioMetrics.ExpectedReturn(finalwealth))
-sdevs = c(sdevs, portfolioMetrics.sd(finalwealth))
+expected_returns = c(expected_returns, portfolioMetrics.ExpectedReturn(finalwealth, ndays = 1))
+sdevs = c(sdevs, portfolioMetrics.sd(finalwealth, ndays = 1))
 ```
 
 
-```{r, echo = FALSE}
+```{r, echo = FALSE, include = FALSE, eval = FALSE}
 
-compare_portfolios = data.frame('Expected_Return' = expected_returns*100, 'sdev' = sdevs, row.names = c('Current Portfolio', 'Portfolio 2', 'Portfolio 3'))
+compare_portfolios = data.frame('Expected_Return' = expected_returns*100, 'sdev' = sdevs*100, row.names = c('Current Portfolio', 'Portfolio 2', 'Portfolio 3'))
 
 ggplot(data = compare_portfolios, aes(sdev, Expected_Return, group = rownames(compare_portfolios), shape = rownames(compare_portfolios))) + geom_point() + labs(y = 'Expected Return (%)', x = 'Standard Deviation (%)', title = 'Portfolio Comparison')
-```
+
 
 We see from the graph above that the stock-heavy Portfolio 2 is the riskiest portfolio with the highest expected return. The Current portfolio, while it results in the smallest return, is also the least risky. As a young investor, I should be willing to accept more risk for more reward. The purpose of these simulations is to give a rough estimate of the current situation against alternatives. Eventually I will have to identify the efficient portfolio frontier and see how far away I am from it.
-
-###Risk-Return analysis of portfolios using Markowitz's formulas
-
-The expected return of a portfolio can be calculated using the weighted average return of each asset.
-The standard deviation of a portfolio can be calculated by summing the weighted deviation and correlation of each stock with the portfolio.
-These calculations should result in similar results as the monte-carlo simulation.
-
-```{r, echo = FALSE}
-VTSMX.mean = mean(returns[,2])
-VBMFX.mean = mean(returns[,3])
-NAESX.mean = mean(returns[,4])
-VEIEX.mean = mean(returns[,5])
 ```
 
 
+
+The expected return of a portfolio can be calculated using the weighted average return of each asset.
+The standard deviation of a portfolio can be calculated by summing the weighted variances and correlation of each stock with the portfolio (defined by Markowitz).
+
+
 ```{r, echo = FALSE}
+current.portfolio.weights = c(0,.5202,.3003,.1795,0)
+portfolio2.weights = c(0,.5,.1,.2,.2)
+portfolio3.weights = c(0,.25,.25,.25,.25)
 expected_returns2 = NULL
 sdevs2 = NULL
 #Portfolio 1
-print(paste('the expected effective return of portfolio 1 is', (1+sum(current.portfolio.weights*c(0,VTSMX.mean, VBMFX.mean, NAESX.mean, VEIEX.mean)))**260-1))
-print(paste('the annualized standard deviation of portfolio 1 is', multipleAssetVariance(current.portfolio.weights, returns)))
-expected_returns2 = c(expected_returns2, (1+sum(current.portfolio.weights*c(0,VTSMX.mean, VBMFX.mean, NAESX.mean, VEIEX.mean)))**260-1)
+#print(paste('the expected effective return of portfolio 1 is', (1+sum(current.portfolio.weights*c(0,VTSMX.mean, VBMFX.mean, NAESX.mean, VEIEX.mean)))-1))
+#print(paste('the annualized standard deviation of portfolio 1 is', multipleAssetVariance(current.portfolio.weights, returns)))
+expected_returns2 = c(expected_returns2, (1+sum(current.portfolio.weights*c(0,VTSMX.mean, VBMFX.mean, NAESX.mean, VEIEX.mean)))-1)
 sdevs2 = c(sdevs2, multipleAssetVariance(current.portfolio.weights, returns))
 
 
 #Portfolio 2
-print(paste('the expected effective return of portfolio 2 is', (1+sum(portfolio2.weights*c(0,VTSMX.mean, VBMFX.mean, NAESX.mean, VEIEX.mean)))**260-1))
-print(paste('the annualized standard deviation of portfolio 2 is', multipleAssetVariance(portfolio2.weights, returns)))
-expected_returns2 = c(expected_returns2, (1+sum(portfolio2.weights*c(0,VTSMX.mean, VBMFX.mean, NAESX.mean, VEIEX.mean)))**260-1)
+#print(paste('the expected effective return of portfolio 2 is', (1+sum(portfolio2.weights*c(0,VTSMX.mean, VBMFX.mean, NAESX.mean, VEIEX.mean)))-1))
+#print(paste('the annualized standard deviation of portfolio 2 is', multipleAssetVariance(portfolio2.weights, returns)))
+expected_returns2 = c(expected_returns2, (1+sum(portfolio2.weights*c(0,VTSMX.mean, VBMFX.mean, NAESX.mean, VEIEX.mean)))-1)
 sdevs2 = c(sdevs2, multipleAssetVariance(portfolio2.weights, returns))
 #Portfolio 3
-print(paste('the expected effective return of portfolio 3 is', (1+sum(portfolio3.weights*c(0,VTSMX.mean, VBMFX.mean, NAESX.mean, VEIEX.mean)))**260-1))
-print(paste('the annualized standard deviation of portfolio 3 is', multipleAssetVariance(portfolio3.weights, returns)))
-expected_returns2 = c(expected_returns2, (1+sum(portfolio3.weights*c(0,VTSMX.mean, VBMFX.mean, NAESX.mean, VEIEX.mean)))**260-1)
+#print(paste('the expected effective return of portfolio 3 is', (1+sum(portfolio3.weights*c(0,VTSMX.mean, VBMFX.mean, NAESX.mean, VEIEX.mean)))-1))
+#print(paste('the annualized standard deviation of portfolio 3 is', multipleAssetVariance(portfolio3.weights, returns)))
+expected_returns2 = c(expected_returns2, (1+sum(portfolio3.weights*c(0,VTSMX.mean, VBMFX.mean, NAESX.mean, VEIEX.mean)))-1)
 sdevs2 = c(sdevs2, multipleAssetVariance(portfolio3.weights, returns))
 ```
 
@@ -172,7 +193,7 @@ compare_portfolios2 = data.frame('Expected_Return' = expected_returns2*100, 'sde
 ggplot(data = compare_portfolios2, aes(sdev, Expected_Return, group = rownames(compare_portfolios2), shape = rownames(compare_portfolios2))) + geom_point() + labs(y = 'Expected Return (%, Annual)', x = 'Annualized Standard Deviation (%)', title = 'Portfolio Comparison')
 ```
   
-We see similar values using these calculations as with the monte carlo simulations. The monte carlo simulations are each lower for each portfolio. This would seem to suggest a bias, but it is actually a result of setting the same seed for the simulations of each portfolio. This can be shown by increasing the number of bootstrap samples (to over 10000) or by not setting a seed at all.  
+We see from the graph above that the stock-heavy Portfolio 2 is the riskiest portfolio. The current portfolio has the largest return and is also the least risky. As a young investor, I should be willing to accept more risk for more reward. The purpose of these calculations is to give a rough estimate of the current situation against alternatives. Next, I will identify the efficient portfolio frontier and see how far away I am from it.
   
   
 
@@ -244,7 +265,7 @@ for (a in possible_weights) {
       weightsb = c(weightsb, current_weights[3])
       weightsc = c(weightsc, current_weights[4])
       weightsd = c(weightsd, current_weights[5])
-      expected_returns = c(expected_returns, (1+sum(current_weights*c(0,VTSMX.mean, VBMFX.mean, NAESX.mean, VEIEX.mean)))**260-1)
+      expected_returns = c(expected_returns, (1+sum(current_weights*c(0,VTSMX.mean, VBMFX.mean, NAESX.mean, VEIEX.mean)))-1)
       sdevs = c(sdevs, multipleAssetVariance(current_weights, returns))
       if (b + c == 1.0 | a + b + c == 1.0 | a + b == 1.0) {
         break
@@ -258,13 +279,19 @@ for (a in possible_weights) {
 
 compare_portfolios = data.frame('Expected_Return' = expected_returns*100, 'sdev' = sdevs*100, 'VTSMX' = weightsa, 'VBMFX' = weightsb, 'NAESX' = weightsc, 'VEIEX' = weightsd)
 
-efficient_frontier = sqldf('SELECT * FROM compare_portfolios WHERE VEIEX = 0 and VTSMX<.5 and VBMFX < .7 ')
-efficient_frontier = rbind(efficient_frontier, sqldf('SELECT * FROM compare_portfolios WHERE VEIEX <= 0.1 and VBMFX >= .7'))
 
-ggplot(data = efficient_frontier, aes(sdev, Expected_Return), col = 'blue') + geom_line(colour = 'blue', lwd = 1.3)+ labs(y = 'Expected Return (%, Annual)', x = 'Annualized Standard Deviation (%)', title = 'Efficient Frontier for Selected Portfolios') + geom_point(data = compare_portfolios, aes(sdev, Expected_Return)) + geom_point(aes(0, risk_free_rate*100))
+
+efficient_frontier = sqldf('SELECT * FROM compare_portfolios WHERE VEIEX = 0')
+#efficient_frontier = rbind(efficient_frontier, sqldf('SELECT * FROM compare_portfolios WHERE VEIEX <= 0.1 and VBMFX >= .7'))
+
+#ggplot(data = efficient_frontier, aes(sdev, Expected_Return), col = 'blue') + geom_line(colour = 'blue', lwd = 1.3)+ labs(y = 'Expected Return (%, Annual)', x = 'Annualized Standard Deviation (%)', title = 'Efficient Frontier for Selected Portfolios') + geom_point(data = compare_portfolios, aes(sdev, Expected_Return, col = 'simulated portfolios'), colour = 'black') + geom_point(aes(0, risk_free_rate*100, col = 'risk free rate'), colour = 'white', size = 2, shape = 15) + geom_point(aes(compare_portfolios2[1,2], compare_portfolios2[1,1], col = 'current portfolio'), colour = 'red', size = 4, shape = 15)
+
+
+ggplot() + geom_line(data = efficient_frontier, aes(sdev, Expected_Return, col = 'efficient frontier'), lwd = 1.3)+ labs(y = 'Expected Return (%, Annual)', x = 'Annualized Standard Deviation (%)', title = 'Efficient Frontier for Selected Portfolios') + geom_point(data = compare_portfolios, aes(sdev, Expected_Return, col = 'simulated portfolios'), colour = 'black') + geom_point(aes(0, risk_free_rate*100, col = 'risk free rate'), size = 2, shape = 15) + geom_point(aes(compare_portfolios2[1,2], compare_portfolios2[1,1], col = 'current portfolio'), size = 4, shape = 15)
 ```
   
-While the efficient frontier I have generated is useful, it is based on historical data, which may not be indicative of the future. The optimal portfolio weightings that are implied by this efficient frontier may be optimal simply because some of the fund performed better or worse over the last decade.  
+
+While the efficient frontier I have generated is useful, it is based on historical data, which may not be indicative of the future. The optimal portfolio weightings that are implied by this efficient frontier may be optimal simply because some of the fund performed better or worse over the last decade.  Having said that, we see that the current porfolio is already on the efficient frontier, but that more risk can be taken on to generate more return, if appropriate for the investor's risk profile.  
 Let's take a look at each of the four funds, below, to see what effect they are having, and to (hopefully) determine the optimal weighting.  
 
 
@@ -272,19 +299,19 @@ Let's take a look at each of the four funds, below, to see what effect they are 
 ggplot(data = compare_portfolios, aes(sdev, Expected_Return, col = VTSMX)) + geom_point() + labs(y = 'Expected Return (%, Annual)', x = 'Annualized Standard Deviation (%)', title = 'Portfolio Comparison')+ scale_colour_gradient2(low = "white", mid = "blue", high = "black", midpoint = 0.5, space = "rgb", guide = "colourbar")
 ```
   
-In this chart and the next few portfolio comparison charts, I have removed the efficient frontier line to clearly depict the effect of each fund, but it is useful to visualize the frontier. As we can see, there are some points on the efficient frontier that include the VTSMX. However, weighting too heavily in the VTSMX resulted in suboptimal positions during the last ten years. Lets look at the effect of the other funds.  
+In this chart and the next few portfolio comparison charts, I have removed the efficient frontier line to clearly depict the effect of each fund, but it is useful to visualize the frontier. As we can see, there are some points on the efficient frontier that include the VTSMX. However, weighting too heavily in the VTSMX resulted in suboptimal positions below the efficient frontier during the last ten years. Lets look at the effect of the other funds.  
 
 ```{r, echo = FALSE}
 ggplot(data = compare_portfolios, aes(sdev, Expected_Return, col = VBMFX)) + geom_point() + labs(y = 'Expected Return (%, Annual)', x = 'Annualized Standard Deviation (%)', title = 'Portfolio Comparison')+ scale_colour_gradient2(low = "white", mid = "blue", high = "black", midpoint = 0.5, space = "rgb", guide = "colourbar")
 ```
   
-The bond market fund, as expected helps us decrease our overall risk. As a young investor, I should be willing to accept more risk then most.  
+The bond market fund, as expected helps us decrease our overall risk, but this comes with less return. As a young investor, I should be willing to accept more risk then most.  
 
 ```{r, echo = FALSE}
 ggplot(data = compare_portfolios, aes(sdev, Expected_Return, col = NAESX)) + geom_point() + labs(y = 'Expected Return (%, Annual)', x = 'Annualized Standard Deviation (%)', title = 'Portfolio Comparison')+ scale_colour_gradient2(low = "white", mid = "blue", high = "black", midpoint = 0.5, space = "rgb", guide = "colourbar")
 ```
   
-The small stock index, NAESX, performed quite nicely over the last ten years. In fact, small stocks tend to be popular, in part, for this reason. Within each triangle shaped cluster, we see that moving from white (0 weight) to the darkest blue of the cluster would have historically given us a big difference in returns, in exchange for marginal amounts of risk.  
+The small stock index, NAESX, performed quite nicely over the last ten years. In fact, small stocks tend to be popular, in part, for this reason. Within each cluster, we see that moving from white (0 weight) to the darkest blue of the cluster would have historically given us a moderate difference in returns, in exchange for taking on extra risk.  
 
 ```{r, echo = FALSE}
 ggplot(data = compare_portfolios, aes(sdev, Expected_Return, col = VEIEX)) + geom_point() + labs(y = 'Expected Return (%, Annual)', x = 'Annualized Standard Deviation (%)', title = 'Portfolio Comparison') + scale_colour_gradient2(low = "white", mid = "blue", high = "black", midpoint = 0.5, space = "rgb", guide = "colourbar")
@@ -293,10 +320,15 @@ ggplot(data = compare_portfolios, aes(sdev, Expected_Return, col = VEIEX)) + geo
 
 ```
   
-We see that the emerging markets index, VEIEX, would have been the worst market to have been in over the last decade. Each portfolio position on the efficient frontier is made up of 0% VEIEX. I discuss this in the conclusion, but for now, oil prices have hurt the Brazilian and Russian economies in particular, and a cocktail of geopolitical factors have affected China and India.  
+We see that the emerging markets index, VEIEX, would have been the worst market to have been in over the last decade. Each portfolio position on the efficient frontier is made up of 0% VEIEX. This is of course a result of VEIEX's low return of 4.17 over the last ten years. This is due to the 17% drop from this year. Oil prices have hurt the Brazilian and Russian economies in particular, and a cocktail of geopolitical factors have affected China and India.  As a result, the analysis suggests not to invest in VEIEX, but again, history does not predict the future.
   
 ###Conclusion
-So, what should the weights be?  
-An important consideration is the fact that past performance is not indicative of future success. If one chooses the weights that worked in the past decade, one has no guarantee that it is optimal for the future. Furthermore, the entire strategy of using index funds is simply to try to track the market. The implication of these portfolio comparisons is that the VEIEX is a terrible fund to own. However, to exclude it would be trying to beat the market. Futhermore, if markets truly are efficient, the risk in the emerging markets would be incorporated into the prices of its securities, and it would ultimately return as much as similarly risky funds. 
+
+An important consideration in answering what the weights should be is the fact that past performance is not indicative of future success. If one chooses the weights that worked in the past decade, one has no guarantee that it is optimal for the future. Furthermore, the entire strategy of using index funds is simply to try to track the market, rather than pick the best performing securities.  
+If one were to follow the implications of these portfolio comparisons, One would never own the VEIEX. However, to exclude it would be trying to beat the market. Futhermore, if markets truly are efficient, the risk in the emerging markets would be incorporated into the prices of the securities it encompasses, and it would ultimately return as much as similarly risky funds.  
   
+*So what should the weights be?*  
+Given that I'm a young investor, I could increase my risk a little by weighting more of the small stock fund (NAESX). I should also add VEIEX to the portfolio so that I can appropriately track the market, even though this would bring the portfolio off of the efficient frontier.  
+  
+Of course, this conclusion is not based on the analysis. I deviate from the results because history does not indicate future success, and I'd rather follow the original strategy, which was to track the market. More importantly, comparing these portfolios is very helpful for measuring and visualizing the risk:return ratios of different funds and the portfolios that include them. 
 
