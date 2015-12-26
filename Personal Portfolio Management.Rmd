@@ -1,5 +1,5 @@
 ---
-title: "Personal Porfolio Management"
+title: "Porfolio Management"
 author: "Julian Ghadially"
 date: "December 21, 2015"
 output: html_document
@@ -12,10 +12,8 @@ Crucial to this is to determine optimal weights for each asset in my portfolio. 
 ###Outline  
 1. Introduction  
 2. Exploratory Data Analysis  
-3. Risk-return analysis using Monte Carlo simulation of several possible positions amongst different asset classes  
-    + Intended as a rough, preliminary analysis  
-4. Risk-return analysis using more accurate financial calculations  
-5. Identify Efficient Portfolio Frontier and my level of risk
+3. Risk-return analysis using more accurate financial calculations  
+4. Identify Efficient Portfolio Frontier and my level of risk
 
 
 
